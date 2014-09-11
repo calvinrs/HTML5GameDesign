@@ -10,6 +10,15 @@ var Game = function() {
   // Create the main stage to draw on.
   this.stage = new PIXI.Stage();
 
+  // Create a world for the physics engine
+  this.world = new p2.World({
+    gravity: [0,0]
+  });
+
+  //speed parameters for the ship
+  this.speed = 100;
+  this.turnspeed = 2;
+
   // Start running the game.
   this.build();
 };
@@ -77,45 +86,54 @@ Game.prototype = {
 
   createShip: function() {
     //Create the ship object
-    this.ship = new PIXI.Graphics();
 
-    this.ship.beginFill(0x20d3fe);
-    this.ship.moveTo(0,0);
-    this.ship.lineTo(-26,60);
-    this.ship.lineTo(26,60);
-    this.ship.endFill();
+    this.ship = new p2.Body({
+      mass: 1,
+      angularVelocity: 0,// 1 to make it spin!
+      damping: 0,
+      angularDamping: 0,
+      position: [Math.round(this._width /2), Math.round(this._height /2)]
+    });
 
-    // Position the ship in the middle of the screen
-    this.ship.x = Math.round(this._width /2);
-    this.ship.y = Math.round(this._height /2);
+    this.shipShape = new p2.Rectangle(52,69);
+    this.ship.addShape(this.shipShape);
+    this.world.addBody(this.ship);
+
+    this.shipGraphics = new PIXI.Graphics();
+
+    this.shipGraphics.beginFill(0x20d3fe);
+    this.shipGraphics.moveTo(0,0);
+    this.shipGraphics.lineTo(-26,60);
+    this.shipGraphics.lineTo(26,60);
+    this.shipGraphics.endFill();
 
     // Add an engine to the ship
-    this.ship.beginFill(0x1495d1);
-    this.ship.drawRect(-15, 60, 30, 8);
-    this.ship.endFill();
+    this.shipGraphics.beginFill(0x1495d1);
+    this.shipGraphics.drawRect(-15, 60, 30, 8);
+    this.shipGraphics.endFill();
 
     //attach to the stage
 
-    this.stage.addChild(this.ship);
+    this.stage.addChild(this.shipGraphics);
 
     //setup our event listeners
     Mousetrap.bind('w', function(){
-      this.ship.rotation = 0;
+      this.shipGraphics.rotation = 0;
       this.moveShip('n');
     }.bind(this));
 
     Mousetrap.bind('s', function(){
-      this.ship.rotation = 180 * (Math.PI /180);
+      this.shipGraphics.rotation = 180 * (Math.PI /180);
       this.moveShip('s');
     }.bind(this));
 
     Mousetrap.bind('a', function(){
-      this.ship.rotation = 270 * (Math.PI /180);
+      this.shipGraphics.rotation = 270 * (Math.PI /180);
       this.moveShip('w');
     }.bind(this));
 
     Mousetrap.bind('d', function(){
-      this.ship.rotation = 90 * (Math.PI /180);
+      this.shipGraphics.rotation = 90 * (Math.PI /180);
       this.moveShip('e');
     }.bind(this));
 
@@ -128,28 +146,41 @@ Game.prototype = {
     switch(dir) {
 
       case 'n':
-        this.ship.y -= speed;
+        this.shipGraphics.y -= speed;
         break;
 
       case 's':
-        this.ship.y += speed;
+        this.shipGraphics.y += speed;
         break;
 
       case 'e':
-        this.ship.x += speed;
+        this.shipGraphics.x += speed;
         break;
 
       case 'w':
-        this.ship.x -= speed;
+        this.shipGraphics.x -= speed;
         break;
 
     }
+  },
+
+  updatePhysics: function(){
+
+    //Update the pos. of the graphics based on the simulation position
+    this.shipGraphics.x = this.ship.position[0];
+    this.shipGraphics.y = this.ship.position[1];
+    this.shipGraphics.rotation = this.ship.angle;
+
+    //step the physics simulation forward
+    this.world.step(1 / 60);
   },
 
   /**
    * Fires at the end of the gameloop to reset and redraw the canvas.
    */
   tick: function() {
+    this.updatePhysics();
+
     // Render the stage for the current frame.
     this.renderer.render(this.stage);
 
