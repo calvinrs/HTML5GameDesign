@@ -19,6 +19,15 @@ var Game = function() {
   this.speed = 100;
   this.turnspeed = 2;
 
+  //listen for key events
+  window.addEventListener('keydown', function(event) {
+    this.handleKeys(event.keyCode, true)
+  }.bind(this), false);
+
+  window.addEventListener('keyup', function(event) {
+    this.handleKeys(event.keyCode, false)
+  }.bind(this), false);
+
   // Start running the game.
   this.build();
 };
@@ -115,56 +124,47 @@ Game.prototype = {
     //attach to the stage
 
     this.stage.addChild(this.shipGraphics);
-
-    //setup our event listeners
-    Mousetrap.bind('w', function(){
-      this.shipGraphics.rotation = 0;
-      this.moveShip('n');
-    }.bind(this));
-
-    Mousetrap.bind('s', function(){
-      this.shipGraphics.rotation = 180 * (Math.PI /180);
-      this.moveShip('s');
-    }.bind(this));
-
-    Mousetrap.bind('a', function(){
-      this.shipGraphics.rotation = 270 * (Math.PI /180);
-      this.moveShip('w');
-    }.bind(this));
-
-    Mousetrap.bind('d', function(){
-      this.shipGraphics.rotation = 90 * (Math.PI /180);
-      this.moveShip('e');
-    }.bind(this));
+    
 
   },
 
-  moveShip: function(dir){
-    var speed = 30;
 
-    //Increment the x/y val of the ship in the direction it will be moving
-    switch(dir) {
+  handleKeys: function(code, state) {
 
-      case 'n':
-        this.shipGraphics.y -= speed;
+    switch (code) {
+
+      case 65:// A
+        this.keyLeft = state;
         break;
 
-      case 's':
-        this.shipGraphics.y += speed;
+      case 68: //D
+        this.keyRight = state;
         break;
 
-      case 'e':
-        this.shipGraphics.x += speed;
+      case 87: //W
+        this.keyUp = state;
         break;
-
-      case 'w':
-        this.shipGraphics.x -= speed;
-        break;
-
     }
-  },
 
+  },
+  
   updatePhysics: function(){
+
+    //update the ship's angular velocities for rotation
+    if (this.keyLeft) {
+      this.ship.angularVelocity = -1 * this.turnspeed;
+    } else if (this.keyRight) {
+      this.ship.angularVelocity = 1 * this.turnspeed;
+    } else {
+      this.ship.angularVelocity = 0;
+    }
+
+    //apply the force vector to the ship
+    if (this.keyUp) {
+      var angle = this.ship.angle + Math.PI / 2;
+      this.ship.force[0] -= this.speed * Math.cos(angle);
+      this.ship.force[1] -= this.speed * Math.sin(angle);
+    }
 
     //Update the pos. of the graphics based on the simulation position
     this.shipGraphics.x = this.ship.position[0];
