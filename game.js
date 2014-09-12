@@ -28,6 +28,9 @@ var Game = function() {
     this.handleKeys(event.keyCode, false)
   }.bind(this), false);
 
+  this.enemyBodies = [];
+  this.enemyGraphics = [];
+
   // Start running the game.
   this.build();
 };
@@ -46,6 +49,9 @@ Game.prototype = {
     //draw the ship into the scene
     //
     this.createShip();
+
+    //spawn random ships
+    this.createEnemies();
 
     // Begin the first frame.
     requestAnimationFrame(this.tick.bind(this));
@@ -128,6 +134,46 @@ Game.prototype = {
 
   },
 
+  createEnemies: function() {
+    //create random interval to create new enemies
+    this.enemyTimer = setInterval(function() {
+      //create the enemy physics body
+      var x = Math.round(Math.random() * this._width);
+      var y = Math.round(Math.random() * this._height);
+      var vx = (Math.random() -0.5) * this.speed;
+      var vy = (Math.random() -0.5) * this.speed;
+      var va = (Math.random() -0.5) * this.speed;
+      var enemy = new p2.Body({
+        position: [x, y],
+        mass: 1,
+        damping: 0,
+        angularDamping: 0,
+        velocities: [vx, vy],
+        andularVelocity: va
+      });
+      var enemyShape = new p2.Circle(20)
+      enemy.addShape(enemyShape);
+      this.world.addBody(enemy);
+
+      //create the graphics object
+      var enemyGraphics = new PIXI.Graphics();
+      enemyGraphics.beginFill(0x38d41a);
+      enemyGraphics.drawCircle(x, y, 20);
+      enemyGraphics.endFill();
+      enemyGraphics.beginFill(0x2aff00)
+      enemyGraphics.lineStyle(1, 0x239d0b , 1);
+      enemyGraphics.drawCircle(x, y, 10);
+      enemyGraphics.endFill();
+
+      this.stage.addChild(enemyGraphics);
+
+      //keep track of the enemies
+      this.enemyBodies.push(enemy);
+      this.enemyGraphics.push(enemyGraphics);
+
+    }.bind(this), 1000)
+  },
+
 
   handleKeys: function(code, state) {
 
@@ -166,10 +212,29 @@ Game.prototype = {
       this.ship.force[1] -= this.speed * Math.sin(angle);
     }
 
+    //Warp to the other side if the ship reaches the boundaries
+    if (this.ship.position[0] > this._width) {
+      this.ship.position[0] = 0;
+    } else if (this.ship.position[0] < 0) {
+      this.ship.position[0] = this._width;
+    }
+
+    if (this.ship.position[1] > this._height){
+      this.ship.position[1] = 0;
+    } else if (this.ship.position[1] < 0) {
+      this.ship.position[1] = this._height;
+    }
+
     //Update the pos. of the graphics based on the simulation position
     this.shipGraphics.x = this.ship.position[0];
     this.shipGraphics.y = this.ship.position[1];
     this.shipGraphics.rotation = this.ship.angle;
+
+    //update enemy positions
+    for (var i = 0; i < this.enemyBodies.length; i++) {
+      this.enemyGraphics[i].x = this.enemyBodies[i].position[0];
+      this.enemyGraphics[i].y = this.enemyBodies[i].position[1];
+    }
 
     //step the physics simulation forward
     this.world.step(1 / 60);
