@@ -53,8 +53,22 @@ Game.prototype = {
     //spawn random ships
     this.createEnemies();
 
+    //setup howler.js audion
+    this.setupAudio();
+
     // Begin the first frame.
     requestAnimationFrame(this.tick.bind(this));
+  },
+
+  setupAudio: function(){
+    this.sounds = new Howl({
+      ursls: ['expSounds.wav','expSounds.ogg'],
+      sprite: {
+        boom1: [0, 640],
+        boom2: [2000, 2140],
+        boom3: [5000, 3000]
+      }
+    });
   },
 
   /**
