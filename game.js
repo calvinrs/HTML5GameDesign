@@ -16,20 +16,21 @@ var Game = function() {
   });
 
   //speed parameters for the ship
-  this.speed = 100;
-  this.turnspeed = 2;
+  this.speed = 500;
+  this.turnSpeed = 3;
 
   //listen for key events
   window.addEventListener('keydown', function(event) {
-    this.handleKeys(event.keyCode, true)
+    this.handleKeys(event.keyCode, true);
   }.bind(this), false);
 
   window.addEventListener('keyup', function(event) {
-    this.handleKeys(event.keyCode, false)
+    this.handleKeys(event.keyCode, false);
   }.bind(this), false);
 
   this.enemyBodies = [];
   this.enemyGraphics = [];
+  this.removeObjs = [];
 
   // Start running the game.
   this.build();
@@ -46,8 +47,7 @@ Game.prototype = {
     // Setup the boundaries of the game's arena.
     this.setupBoundaries();
 
-    //draw the ship into the scene
-    //
+    //draw the ship into the scene   
     this.createShip();
 
     //spawn random ships
@@ -62,12 +62,19 @@ Game.prototype = {
 
   setupAudio: function(){
     this.sounds = new Howl({
-      ursls: ['expSounds.wav','expSounds.ogg'],
+      urls: ['expSounds.wav','expSounds.ogg'],
       sprite: {
         boom1: [0, 640],
         boom2: [2000, 2140],
         boom3: [5000, 3000]
       }
+    });
+
+    this.music = new Howl({
+      urls: ['space.mp3'],
+      buffer: true,      
+      autoplay: true,
+      volume: 0.7
     });
   },
 
@@ -162,21 +169,22 @@ Game.prototype = {
         mass: 1,
         damping: 0,
         angularDamping: 0,
-        velocities: [vx, vy],
-        andularVelocity: va
+        velocity: [vx, vy],
+        angularVelocity: va
       });
-      var enemyShape = new p2.Circle(20)
+      var enemyShape = new p2.Circle(20);
+      enemyShape.sensor = true;
       enemy.addShape(enemyShape);
       this.world.addBody(enemy);
 
       //create the graphics object
       var enemyGraphics = new PIXI.Graphics();
       enemyGraphics.beginFill(0x38d41a);
-      enemyGraphics.drawCircle(x, y, 20);
+      enemyGraphics.drawCircle(0, 0, 20);
       enemyGraphics.endFill();
-      enemyGraphics.beginFill(0x2aff00)
+      enemyGraphics.beginFill(0x2aff00);
       enemyGraphics.lineStyle(1, 0x239d0b , 1);
-      enemyGraphics.drawCircle(x, y, 10);
+      enemyGraphics.drawCircle(0, 0, 10);
       enemyGraphics.endFill();
 
       this.stage.addChild(enemyGraphics);
@@ -185,7 +193,13 @@ Game.prototype = {
       this.enemyBodies.push(enemy);
       this.enemyGraphics.push(enemyGraphics);
 
-    }.bind(this), 1000)
+    }.bind(this), 1000);
+
+    this.world.on('beginContact', function(event) {
+      if (event.bodyB.id === this.ship.id) {
+        this.removeObjs.push(event.bodyA);
+      }
+    }.bind(this));
   },
 
 
@@ -212,9 +226,9 @@ Game.prototype = {
 
     //update the ship's angular velocities for rotation
     if (this.keyLeft) {
-      this.ship.angularVelocity = -1 * this.turnspeed;
+      this.ship.angularVelocity = -1 * this.turnSpeed;
     } else if (this.keyRight) {
-      this.ship.angularVelocity = 1 * this.turnspeed;
+      this.ship.angularVelocity = this.turnSpeed;
     } else {
       this.ship.angularVelocity = 0;
     }
@@ -225,6 +239,11 @@ Game.prototype = {
       this.ship.force[0] -= this.speed * Math.cos(angle);
       this.ship.force[1] -= this.speed * Math.sin(angle);
     }
+
+    //Update the pos. of the graphics based on the simulation position
+    this.shipGraphics.x = this.ship.position[0];
+    this.shipGraphics.y = this.ship.position[1];
+    this.shipGraphics.rotation = this.ship.angle;
 
     //Warp to the other side if the ship reaches the boundaries
     if (this.ship.position[0] > this._width) {
@@ -237,12 +256,7 @@ Game.prototype = {
       this.ship.position[1] = 0;
     } else if (this.ship.position[1] < 0) {
       this.ship.position[1] = this._height;
-    }
-
-    //Update the pos. of the graphics based on the simulation position
-    this.shipGraphics.x = this.ship.position[0];
-    this.shipGraphics.y = this.ship.position[1];
-    this.shipGraphics.rotation = this.ship.angle;
+    }    
 
     //update enemy positions
     for (var i = 0; i < this.enemyBodies.length; i++) {
@@ -252,6 +266,27 @@ Game.prototype = {
 
     //step the physics simulation forward
     this.world.step(1 / 60);
+
+    //remove enemy bodies
+    for (i=0; i<this.removeObjs.length; i++) {
+
+      this.world.removeBody(this.removeObjs[i]);
+
+      var index = this.enemyBodies.indexOf(this.removeObjs[i]);
+
+      if (index) {
+        this.enemyBodies.splice(index, 1);
+        this.stage.removeChild(this.enemyGraphics[index]);
+        this.enemyGraphics.splice(index, 1);
+      }
+
+      //play random BOOM
+      this.sounds.play('boom' + (Math.ceil(Math.random() * 3)));
+      
+    }
+    
+    this.removeObjs.length = 0;
+
   },
 
   /**
