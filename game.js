@@ -14,6 +14,9 @@ var Game = function() {
   // Create the main stage to draw on.
   this.stage = new PIXI.Stage();
 
+  //create the background stage for static elements.
+  this.bgStage = new PIXI.Stage();
+
   // Create a world for the physics engine
   this.world = new p2.World({
     gravity: [0,0]
