@@ -6,16 +6,15 @@ var Game = function() {
   //setup the background canvas
   this.bgRenderer = new PIXI.CanvasRenderer(this._width, this._height);
   document.body.appendChild(this.bgRenderer.view);
+  //create the background stage for static elements.
+  this.bgStage = new PIXI.Stage();
 
   // Setup the rendering surface.
   this.renderer = new PIXI.CanvasRenderer(this._width, this._height, null, true);
   document.body.appendChild(this.renderer.view);
 
   // Create the main stage to draw on.
-  this.stage = new PIXI.Stage();
-
-  //create the background stage for static elements.
-  this.bgStage = new PIXI.Stage();
+  this.stage = new PIXI.Stage();  
 
   // Create a world for the physics engine
   this.world = new p2.World({
@@ -60,7 +59,7 @@ Game.prototype = {
     //spawn random ships
     this.createEnemies();
 
-    //setup howler.js audion
+    //setup howler.js audio
     this.setupAudio();
 
     // Begin the first frame.
@@ -81,7 +80,8 @@ Game.prototype = {
       urls: ['space.mp3'],
       buffer: true,      
       autoplay: true,
-      volume: 0.7
+      volume: 0.7,
+      loop: true
     });
   },
 
@@ -134,8 +134,8 @@ Game.prototype = {
   */
 
   createShip: function() {
-    //Create the ship object
 
+    //Create the ship physics object
     this.ship = new p2.Body({
       mass: 1,
       angularVelocity: 0,// 1 to make it spin!
@@ -148,18 +148,27 @@ Game.prototype = {
     this.ship.addShape(this.shipShape);
     this.world.addBody(this.ship);
 
-    this.shipGraphics = new PIXI.Graphics();
+    //create the ship graphics object
+    var shipGraphics = new PIXI.Graphics();
 
-    this.shipGraphics.beginFill(0x20d3fe);
-    this.shipGraphics.moveTo(0,0);
-    this.shipGraphics.lineTo(-26,60);
-    this.shipGraphics.lineTo(26,60);
-    this.shipGraphics.endFill();
+    shipGraphics.beginFill(0x20d3fe);
+    shipGraphics.moveTo(26,0);
+    shipGraphics.lineTo(0,60);
+    shipGraphics.lineTo(52,60);
+    shipGraphics.endFill();
 
     // Add an engine to the ship
-    this.shipGraphics.beginFill(0x1495d1);
-    this.shipGraphics.drawRect(-15, 60, 30, 8);
-    this.shipGraphics.endFill();
+    shipGraphics.beginFill(0x1495d1);
+    shipGraphics.drawRect(7, 60, 38, 8);
+    shipGraphics.endFill();
+
+    //cache the ship to only use one draw call per tick
+    var shipCache = new PIXI.CanvasRenderer(52 ,69 ,null ,true);
+    var shipCacheStage = new PIXI.Stage();
+    shipCacheStage.addChild(shipGraphics);
+    shipCache.render(shipCacheStage);
+    var shipTexture = PIXI.Texture.fromCanvas(shipCache.view);
+    this.shipGraphics = new PIXI.Sprite(shipTexture);
 
     //attach to the stage
 
@@ -169,6 +178,24 @@ Game.prototype = {
   },
 
   createEnemies: function() {
+
+    //create the graphics object
+      var enemyGraphics = new PIXI.Graphics();
+      enemyGraphics.beginFill(0x38d41a);
+      enemyGraphics.drawCircle(20, 20, 20);
+      enemyGraphics.endFill();
+      enemyGraphics.beginFill(0x2aff00);
+      enemyGraphics.lineStyle(1, 0x239d0b , 1);
+      enemyGraphics.drawCircle(20, 20, 10);
+      enemyGraphics.endFill();
+
+    //create the enemy cache
+    var enemyCache = new PIXI.CanvasRenderer(40,40, null, true);
+    var enemyCacheStage = new PIXI.Stage();
+    enemyCacheStage.addChild(enemyGraphics);
+    enemyCache.render(enemyCacheStage);
+    var enemyTexture = PIXI.Texture.fromCanvas(enemyCache.view);
+
     //create random interval to create new enemies
     this.enemyTimer = setInterval(function() {
       //create the enemy physics body
@@ -189,22 +216,13 @@ Game.prototype = {
       enemyShape.sensor = true;
       enemy.addShape(enemyShape);
       this.world.addBody(enemy);
-
-      //create the graphics object
-      var enemyGraphics = new PIXI.Graphics();
-      enemyGraphics.beginFill(0x38d41a);
-      enemyGraphics.drawCircle(0, 0, 20);
-      enemyGraphics.endFill();
-      enemyGraphics.beginFill(0x2aff00);
-      enemyGraphics.lineStyle(1, 0x239d0b , 1);
-      enemyGraphics.drawCircle(0, 0, 10);
-      enemyGraphics.endFill();
-
-      this.stage.addChild(enemyGraphics);
+      
+      var enemySprite = new PIXI.Sprite(enemyTexture);
+      this.stage.addChild(enemySprite);
 
       //keep track of the enemies
       this.enemyBodies.push(enemy);
-      this.enemyGraphics.push(enemyGraphics);
+      this.enemyGraphics.push(enemySprite);
 
     }.bind(this), 1000);
 
@@ -273,8 +291,15 @@ Game.prototype = {
 
     //update enemy positions
     for (var i = 0; i < this.enemyBodies.length; i++) {
-      this.enemyGraphics[i].x = this.enemyBodies[i].position[0];
-      this.enemyGraphics[i].y = this.enemyBodies[i].position[1];
+      var x = this.enemyBodies[i].position[0];
+      var y = this.enemyBodies[i].position[1];
+      this.enemyGraphics[i].x = x;
+      this.enemyGraphics[i].y = y;
+
+      //remove bodies that are off the map
+      if (x < 0 || y < 0 || x > this._width || y > this._height){
+        this.removeObjs.push(this.enemyBodies[i]);
+      }
     }
 
     //step the physics simulation forward
@@ -294,7 +319,7 @@ Game.prototype = {
       }
 
       //play random BOOM
-      this.sounds.play('boom' + (Math.ceil(Math.random() * 3)));
+      //this.sounds.play('boom' + (Math.ceil(Math.random() * 3)));
       
     }
     
