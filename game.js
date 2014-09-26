@@ -1,7 +1,12 @@
 var Game = function() {
   // Set the width and height of the scene.
-  this._width = 1280;
-  this._height = 720;
+  this._width = 1920;
+  this._height = 1080;
+
+  //make sure we maintain the correct aspect ration
+  window.addEventListener('resize', function(){
+    this.resize();
+  }.bind(this),false);
 
   //setup the background canvas
   this.bgRenderer = new PIXI.CanvasRenderer(this._width, this._height);
@@ -47,6 +52,10 @@ Game.prototype = {
    * Build the scene and begin animating.
    */
   build: function() {
+
+    // Resize the game area to the window
+    this.resize();
+
     // Draw the star-field in the background.
     this.drawStars();
 
@@ -327,6 +336,25 @@ Game.prototype = {
     
     this.removeObjs.length = 0;
 
+  },
+
+  resize: function() {
+    var ratio = 1080 /1920;
+    var docWidth = document.body.clientWidth;
+    var docHeight = document.body.clientHeight;
+
+    if (docHeight / docWidth < ratio) {
+      this.bgRenderer.view.style.height = '100%';
+      this.renderer.view.style.height = '100%';
+      this.bgRenderer.view.style.width = 'auto';
+      this.renderer.view.style.width = 'auto';
+    }
+    else {
+      this.bgRenderer.view.style.width = '100%';
+      this.renderer.view.style.width = '100%';
+      this.bgRenderer.view.style.height = 'auto';
+      this.renderer.view.style.height = 'auto';
+    }
   },
 
   /**
