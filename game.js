@@ -229,6 +229,8 @@ Game.prototype = {
     this.world.on('beginContact', function(event) {
       if (event.bodyB.id === this.ship.id) {
         this.removeObjs.push(event.bodyA);
+        //play random BOOM
+        this.sounds.play('boom' + (Math.ceil(Math.random() * 3)));
       }
     }.bind(this));
   },
