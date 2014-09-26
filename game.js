@@ -1,4 +1,7 @@
 var Game = function() {
+  // Determine which player we are
+  this._player = parseInt(window.location.hash.replace('#', ''), 10);
+
   // Set the width and height of the scene.
   this._width = 1920;
   this._height = 1080;
@@ -43,6 +46,15 @@ var Game = function() {
   this.enemyGraphics = [];
   this.removeObjs = [];
 
+  //setup socket.io
+  this.socket = io('http://localhost:2000');
+
+  // Update the score when data received
+  this.socket.on('score', function(msg) {
+    this._score[msg.plr] = msg.score;
+    this.score[msg.plr].setText(this._score[msg.plr]);
+  }.bind(this));
+
   // Start running the game.
   this.build();
 };
@@ -70,6 +82,9 @@ Game.prototype = {
 
     //setup howler.js audio
     this.setupAudio();
+
+    // Setup score views.
+    this.setupScores();
 
     // Begin the first frame.
     requestAnimationFrame(this.tick.bind(this));
@@ -160,14 +175,14 @@ Game.prototype = {
     //create the ship graphics object
     var shipGraphics = new PIXI.Graphics();
 
-    shipGraphics.beginFill(0x20d3fe);
+    shipGraphics.beginFill(this._player === 0 ? 0x20d3fe : 0xffe400);
     shipGraphics.moveTo(26,0);
     shipGraphics.lineTo(0,60);
     shipGraphics.lineTo(52,60);
     shipGraphics.endFill();
 
     // Add an engine to the ship
-    shipGraphics.beginFill(0x1495d1);
+    shipGraphics.beginFill(this._player === 0 ? 0x1495d1 : 0xffc000);
     shipGraphics.drawRect(7, 60, 38, 8);
     shipGraphics.endFill();
 
@@ -238,10 +253,51 @@ Game.prototype = {
     this.world.on('beginContact', function(event) {
       if (event.bodyB.id === this.ship.id) {
         this.removeObjs.push(event.bodyA);
+
         //play random BOOM
         this.sounds.play('boom' + (Math.ceil(Math.random() * 3)));
+
+        //Add a point to the score
+        this._score[this._player]++;
+        this.score[this._player].setText(this._score[this._player]);
+
+        //broadcast the score to all clients
+        this.socket.emit('score',{
+            score: this._score[this._player],
+            plr: this._player
+        });
       }
     }.bind(this));
+  },
+
+  /**
+   * Setup the text to display scores.
+   */
+   setupScores: function() {
+    this._score = [0, 0];
+    this.score = [];
+
+    // Setup the score text for player 1.
+    this.score[0] = new PIXI.Text(this._score[0], {
+      font: 'bold 40px Arial',
+      fill: 'cyan',
+      align: 'left'
+    });
+    this.score[0].x = 20;
+    this.score[0].y = 1025;
+
+    // Setup the score text for player 2.
+    this.score[1] = new PIXI.Text(this._score[1], {
+      font: 'bold 40px Arial',
+      fill: 'yellow',
+      align: 'right'
+    });
+    this.score[1].x = 1880;
+    this.score[1].y = 1025;
+
+    // Add the text to the stage.
+    this.stage.addChild(this.score[0]);
+    this.stage.addChild(this.score[1]);
   },
 
 
