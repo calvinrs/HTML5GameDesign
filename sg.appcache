@@ -1,0 +1,14 @@
+CACHE MANIFEST
+
+# v1.0.0
+
+CACHE:
+index.html
+deploy/game.js
+space.mp3
+expSounds.wav
+expSounds.ogg
+https://cdn.socket.io/socket.io-1.1.0.js
+
+NETWORK:
+*
